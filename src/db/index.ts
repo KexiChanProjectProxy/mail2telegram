@@ -41,6 +41,7 @@ export class Dao {
         const defaultStatus = {
             telegram: false,
             forward: [],
+            webhook: [],
         };
         if (guardian) {
             try {

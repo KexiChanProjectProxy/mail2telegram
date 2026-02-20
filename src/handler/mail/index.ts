@@ -3,6 +3,7 @@ import type { BlockPolicy, EmailCache, Environment } from '../../types';
 import { Dao } from '../../db';
 import { isMessageBlock, parseEmail, renderEmailListMode } from '../../mail';
 import { createTelegramBotAPI } from '../../telegram';
+import { sendMailToWebhooks } from '../../webhook';
 
 export async function sendMailToTelegram(mail: EmailCache, env: Environment): Promise<number[]> {
     const {
@@ -25,6 +26,7 @@ export async function sendMailToTelegram(mail: EmailCache, env: Environment): Pr
 export async function emailHandler(message: ForwardableEmailMessage, env: Environment): Promise<void> {
     const {
         FORWARD_LIST,
+        WEBHOOK_LIST,
         BLOCK_POLICY,
         GUARDIAN_MODE,
         DB,
@@ -70,15 +72,39 @@ export async function emailHandler(message: ForwardableEmailMessage, env: Enviro
         console.error(e);
     }
 
+    // Parse email once for both webhook and Telegram
+    let mail: EmailCache | null = null;
+    try {
+        const ttl = Number.parseInt(MAIL_TTL, 10) || 60 * 60 * 24;
+        const maxSize = Number.parseInt(MAX_EMAIL_SIZE || '', 10) || 512 * 1024;
+        const maxSizePolicy = MAX_EMAIL_SIZE_POLICY || 'truncate';
+        mail = await parseEmail(message, maxSize, maxSizePolicy);
+        await dao.saveMailCache(mail.id, mail, ttl);
+    } catch (e) {
+        console.error(e);
+    }
+
+    // Send to webhooks
+    if (mail) {
+        try {
+            const blockWebhook = isBlock && blockPolicy.includes('webhook');
+            if (!blockWebhook && WEBHOOK_LIST) {
+                const newlyDelivered = await sendMailToWebhooks(mail, env, status.webhook);
+                if (isGuardian && newlyDelivered.length > 0) {
+                    status.webhook.push(...newlyDelivered);
+                    await dao.saveMailStatus(id, status, statusTTL);
+                }
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
     // Send to Telegram
     try {
         const blockTelegram = isBlock && blockPolicy.includes('telegram');
-        if (!status.telegram && !blockTelegram) {
+        if (!status.telegram && !blockTelegram && mail) {
             const ttl = Number.parseInt(MAIL_TTL, 10) || 60 * 60 * 24;
-            const maxSize = Number.parseInt(MAX_EMAIL_SIZE || '', 10) || 512 * 1024;
-            const maxSizePolicy = MAX_EMAIL_SIZE_POLICY || 'truncate';
-            const mail = await parseEmail(message, maxSize, maxSizePolicy);
-            await dao.saveMailCache(mail.id, mail, ttl);
             const msgIDs = await sendMailToTelegram(mail, env);
             for (const msgID of msgIDs) {
                 await dao.saveTelegramIDToMailID(`${msgID}`, mail.id, ttl);

@@ -3,6 +3,7 @@ import type { Ai, KVNamespace } from '@cloudflare/workers-types';
 export interface EmailHandleStatus {
     telegram: boolean;
     forward: string[];
+    webhook: string[];
 }
 
 export interface EmailCache {
@@ -17,7 +18,7 @@ export interface EmailCache {
 
 export type MaxEmailSizePolicy = 'unhandled' | 'continue' | 'truncate';
 
-export type BlockPolicy = 'reject' | 'forward' | 'telegram';
+export type BlockPolicy = 'reject' | 'forward' | 'telegram' | 'webhook';
 
 export interface Environment {
     TELEGRAM_TOKEN: string;
@@ -38,6 +39,9 @@ export interface Environment {
     SUMMARY_TARGET_LANG?: string;
     GUARDIAN_MODE?: string;
     RESEND_API_KEY?: string;
+    WEBHOOK_LIST?: string;
+    WEBHOOK_SECRET?: string;
+    WEBHOOK_TIMEOUT?: string;
     DB: KVNamespace;
     AI?: Ai;
     DEBUG?: string;
