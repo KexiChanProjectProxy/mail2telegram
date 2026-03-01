@@ -28,7 +28,7 @@ export async function renderEmailListMode(mail: EmailCache, env: Environment): P
     ];
     if ((AI && WORKERS_AI_MODEL) || OPENAI_API_KEY) {
         keyboard.push({
-            text: 'Summary',
+            text: 'Original',
             callback_data: `s:${mail.id}`,
         });
     }
@@ -100,7 +100,22 @@ export async function renderEmailSummaryMode(mail: EmailCache, env: Environment)
     } = env;
 
     const req = renderEmailDetail('', mail.id);
-    const prompt = `Summarize the following text in approximately 50 words with ${SUMMARY_TARGET_LANG}\n\n${mail.text}`;
+    const prompt = `Analyze the following email and provide a summary in ${SUMMARY_TARGET_LANG}.
+
+Special instructions:
+1. If this is a verification code or OTP email:
+   - Clearly state: "[Sender] sent a verification code to [Recipient]"
+   - Put the code in a markdown code block like: \` \` \`CODE\` \` \`
+   - Make it very prominent and easy to copy
+
+2. Always include the original email content below your summary.
+
+Format your response as:
+[Your summary/analysis here]
+
+---
+Original Email:
+${mail.text}`;
 
     try {
         if (AI && WORKERS_AI_MODEL) {

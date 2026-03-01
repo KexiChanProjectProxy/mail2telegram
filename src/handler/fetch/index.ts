@@ -17,7 +17,7 @@ class HTTPError extends Error {
 function createTmaAuthMiddleware(env: Environment): (req: Request) => Promise<void> {
     const {
         TELEGRAM_TOKEN,
-        TELEGRAM_ID,
+        ALLOWED_USERS,
     } = env;
     return async (req: Request): Promise<void> => {
         const [authType, authData = ''] = (req.headers.get('Authorization') || '').split(' ');
@@ -29,7 +29,7 @@ function createTmaAuthMiddleware(env: Environment): (req: Request) => Promise<vo
                 expiresIn: 3600,
             });
             const user = JSON.parse(new URLSearchParams(authData).get('user') || '{}');
-            for (const id of TELEGRAM_ID.split(',')) {
+            for (const id of ALLOWED_USERS.split(',')) {
                 if (id === `${user.id}`) {
                     return;
                 }

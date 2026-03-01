@@ -23,6 +23,7 @@ export type BlockPolicy = 'reject' | 'forward' | 'telegram' | 'webhook';
 export interface Environment {
     TELEGRAM_TOKEN: string;
     TELEGRAM_ID: string;
+    ALLOWED_USERS: string;
     FORWARD_LIST: string;
     BLOCK_LIST: string;
     WHITE_LIST: string;

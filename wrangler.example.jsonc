@@ -17,6 +17,7 @@
     "vars": {
         "DOMAIN": "mail2telegram.YOUR_NAME.workers.dev",
         "TELEGRAM_ID": "YOUR_TELEGRAM_ID",
+        "ALLOWED_USERS": "YOUR_TELEGRAM_USER_ID",
         "TELEGRAM_TOKEN": "YOUR_TELEGRAM_TOKEN",
         "FORWARD_LIST": "YOUR_BACKUP_EMAIL",
         // "WORKERS_AI_MODEL": "@cf/meta/llama-3-8b-instruct", // Remove the comment to enable Workers AI

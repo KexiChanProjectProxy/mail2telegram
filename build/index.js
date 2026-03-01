@@ -10197,7 +10197,7 @@ To		:	${mail.to}`;
   ];
   if (AI && WORKERS_AI_MODEL || OPENAI_API_KEY) {
     keyboard.push({
-      text: "Summary",
+      text: "Original",
       callback_data: `s:${mail.id}`
     });
   }
@@ -10264,8 +10264,21 @@ async function renderEmailSummaryMode(mail, env) {
     SUMMARY_TARGET_LANG = "english"
   } = env;
   const req = renderEmailDetail("", mail.id);
-  const prompt = `Summarize the following text in approximately 50 words with ${SUMMARY_TARGET_LANG}
+  const prompt = `Analyze the following email and provide a summary in ${SUMMARY_TARGET_LANG}.
 
+Special instructions:
+1. If this is a verification code or OTP email:
+   - Clearly state: "[Sender] sent a verification code to [Recipient]"
+   - Put the code in a markdown code block like: \` \` \`CODE\` \` \`
+   - Make it very prominent and easy to copy
+
+2. Always include the original email content below your summary.
+
+Format your response as:
+[Your summary/analysis here]
+
+---
+Original Email:
 ${mail.text}`;
   try {
     if (AI && WORKERS_AI_MODEL) {
@@ -10501,7 +10514,7 @@ var HTTPError = class extends Error {
 function createTmaAuthMiddleware(env) {
   const {
     TELEGRAM_TOKEN,
-    TELEGRAM_ID
+    ALLOWED_USERS
   } = env;
   return async (req) => {
     const [authType, authData = ""] = (req.headers.get("Authorization") || "").split(" ");
@@ -10513,7 +10526,7 @@ function createTmaAuthMiddleware(env) {
         expiresIn: 3600
       });
       const user = JSON.parse(new URLSearchParams(authData).get("user") || "{}");
-      for (const id of TELEGRAM_ID.split(",")) {
+      for (const id of ALLOWED_USERS.split(",")) {
         if (id === `${user.id}`) {
           return;
         }
