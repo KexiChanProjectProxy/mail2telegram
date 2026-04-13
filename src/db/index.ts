@@ -1,5 +1,6 @@
 import type { KVNamespace } from '@cloudflare/workers-types';
 import type { EmailCache, EmailHandleStatus } from '../types';
+import { logger } from '../logger';
 
 export type AddressListStoreKey = 'BLOCK_LIST' | 'WHITE_LIST';
 
@@ -20,18 +21,20 @@ export class Dao {
             const raw = await this.db.get(key);
             return loadArrayFromRaw(raw);
         } catch (e) {
-            console.error(e);
+            logger.error('KV load failed', { key, operation: 'loadArrayFromDB', error: (e as Error).message });
         }
         return [];
     }
 
     async addAddress(address: string, type: AddressListStoreKey): Promise<void> {
+        logger.debug('KV write', { key: type, operation: 'addAddress' });
         const list = await this.loadArrayFromDB(type);
         list.unshift(address);
         await this.db.put(type, JSON.stringify(list));
     }
 
     async removeAddress(address: string, type: AddressListStoreKey): Promise<void> {
+        logger.debug('KV write', { key: type, operation: 'removeAddress' });
         const list = await this.loadArrayFromDB(type);
         const result = list.filter(item => item !== address);
         await this.db.put(type, JSON.stringify(result));
@@ -47,19 +50,22 @@ export class Dao {
             try {
                 const raw = await this.db.get(id);
                 if (raw) {
+                    logger.debug('KV load', { key: id, operation: 'loadMailStatus', found: true });
                     return {
                         ...defaultStatus,
                         ...JSON.parse(raw),
                     };
                 }
             } catch (e) {
-                console.error(e);
+                logger.error('KV load failed', { key: id, operation: 'loadMailStatus', error: (e as Error).message });
             }
         }
+        logger.debug('KV load', { key: id, operation: 'loadMailStatus', found: false });
         return defaultStatus;
     }
 
     async saveMailStatus(id: string, status: EmailHandleStatus, ttl?: number): Promise<void> {
+        logger.debug('KV write', { key: id, operation: 'saveMailStatus', ttl });
         await this.db.put(id, JSON.stringify(status), { expirationTtl: ttl });
     }
 
@@ -67,15 +73,18 @@ export class Dao {
         try {
             const raw = await this.db.get(id);
             if (raw) {
+                logger.debug('KV load', { key: id, operation: 'loadMailCache', found: true });
                 return JSON.parse(raw);
             }
         } catch (e) {
-            console.error(e);
+            logger.error('KV load failed', { key: id, operation: 'loadMailCache', error: (e as Error).message });
         }
+        logger.debug('KV load', { key: id, operation: 'loadMailCache', found: false });
         return null;
     }
 
     async saveMailCache(id: string, cache: EmailCache, ttl?: number): Promise<void> {
+        logger.debug('KV write', { key: id, operation: 'saveMailCache', ttl });
         await this.db.put(id, JSON.stringify(cache), { expirationTtl: ttl });
     }
 
@@ -84,6 +93,7 @@ export class Dao {
     }
 
     async saveTelegramIDToMailID(id: string, mailID: string, ttl?: number): Promise<void> {
+        logger.debug('KV write', { key: `TelegramID2MailID:${id}`, operation: 'saveTelegramIDToMailID', ttl });
         await this.db.put(`TelegramID2MailID:${id}`, mailID, { expirationTtl: ttl });
     }
 }

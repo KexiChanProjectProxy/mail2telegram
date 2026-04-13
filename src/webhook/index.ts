@@ -1,4 +1,5 @@
 import type { EmailCache, Environment } from '../types';
+import { logger } from '../logger';
 
 interface WebhookPayload {
     event: 'email.received';
@@ -78,6 +79,7 @@ export async function sendToWebhook(
         if (!response.ok) {
             throw new Error(`Webhook returned ${response.status}: ${response.statusText}`);
         }
+        logger.info('Webhook sent', { url, mailId: mail.id, subject: mail.subject, status: response.status });
     } finally {
         clearTimeout(timeoutId);
     }
@@ -107,7 +109,7 @@ export async function sendMailToWebhooks(
             await sendToWebhook(url, mail, WEBHOOK_SECRET, timeoutMs);
             newlyDelivered.push(url);
         } catch (e) {
-            console.error(`Failed to send webhook to ${url}:`, e);
+            logger.error('Webhook delivery failed', { url, mailId: mail.id, error: (e as Error).message });
         }
     }
 

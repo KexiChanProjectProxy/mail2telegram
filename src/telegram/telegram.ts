@@ -5,6 +5,7 @@ import { Dao } from '../db';
 import { renderEmailDebugMode, renderEmailListMode, renderEmailPreviewMode, renderEmailSummaryMode, replyToEmail } from '../mail';
 import { createTelegramBotAPI } from './api';
 import { tmaModeDescription } from './const';
+import { logger } from '../logger';
 
 type TelegramMessageHandler = (message: Telegram.Message) => Promise<Response>;
 type CommandHandlerGroup = Record<string, TelegramMessageHandler>;
@@ -101,7 +102,7 @@ async function telegramCommandHandler(message: Telegram.Message, env: Environmen
     }
     let [command] = message.text?.split(/ (.*)/) || [''];
     if (!command.startsWith('/')) {
-        console.log(`Invalid command: ${command}`);
+        logger.debug('Invalid command received', { command });
         return;
     }
     command = command.substring(1);
@@ -138,7 +139,7 @@ async function telegramCallbackHandler(callback: Telegram.CallbackQuery, env: En
         return;
     }
 
-    console.log(`Received callback: ${JSON.stringify({ data, callbackId, chatId, messageId })}`);
+    logger.info('Telegram callback received', { data, callbackId, chatId, messageId });
     const renderHandlerBuilder = (render: EmailRender): (arg: string) => Promise<void> => {
         return async (arg: string): Promise<void> => {
             const value = await dao.loadMailCache(arg);
@@ -184,7 +185,7 @@ async function telegramCallbackHandler(callback: Telegram.CallbackQuery, env: En
         }
         return;
     }
-    console.log(`Unknown data: ${data}`);
+    logger.debug('Unknown callback data', { data });
 }
 
 export async function telegramWebhookHandler(req: Request, env: Environment): Promise<void> {

@@ -4,6 +4,7 @@ import { Dao } from '../../db';
 import { isMessageBlock, parseEmail, renderEmailListMode } from '../../mail';
 import { createTelegramBotAPI } from '../../telegram';
 import { sendMailToWebhooks } from '../../webhook';
+import { logger } from '../../logger';
 
 export async function sendMailToTelegram(mail: EmailCache, env: Environment): Promise<number[]> {
     const {
@@ -43,8 +44,19 @@ export async function emailHandler(message: ForwardableEmailMessage, env: Enviro
     const statusTTL = 60 * 60;
     const status = await dao.loadMailStatus(id, isGuardian);
 
+    logger.info('Email received', {
+        messageId: id,
+        from: message.from,
+        to: message.to,
+        subject: message.headers.get('Subject') || '',
+        isBlock,
+        isGuardian,
+        blockPolicy,
+    });
+
     // Reject the email
     if (isBlock && blockPolicy.includes('reject')) {
+        logger.info('Email rejected', { messageId: id, reason: 'block_policy_reject' });
         message.setReject('Blocked');
         return;
     }
@@ -60,16 +72,17 @@ export async function emailHandler(message: ForwardableEmailMessage, env: Enviro
                     continue;
                 }
                 await message.forward(add);
+                logger.info('Email forwarded', { messageId: id, forwardTo: add });
                 if (isGuardian) {
                     status.forward.push(add);
                     await dao.saveMailStatus(id, status, statusTTL);
                 }
             } catch (e) {
-                console.error(e);
+                logger.error('Forward failed', { messageId: id, forwardTo: forward, error: (e as Error).message });
             }
         }
     } catch (e) {
-        console.error(e);
+        logger.error('Forward handler error', { messageId: id, error: (e as Error).message });
     }
 
     // Parse email once for both webhook and Telegram
@@ -80,8 +93,9 @@ export async function emailHandler(message: ForwardableEmailMessage, env: Enviro
         const maxSizePolicy = MAX_EMAIL_SIZE_POLICY || 'truncate';
         mail = await parseEmail(message, maxSize, maxSizePolicy);
         await dao.saveMailCache(mail.id, mail, ttl);
+        logger.info('Email parsed', { messageId: id, mailId: mail.id, subject: mail.subject });
     } catch (e) {
-        console.error(e);
+        logger.error('Email parse error', { messageId: id, error: (e as Error).message });
     }
 
     // Send to webhooks
@@ -90,13 +104,14 @@ export async function emailHandler(message: ForwardableEmailMessage, env: Enviro
             const blockWebhook = isBlock && blockPolicy.includes('webhook');
             if (!blockWebhook && WEBHOOK_LIST) {
                 const newlyDelivered = await sendMailToWebhooks(mail, env, status.webhook);
+                logger.info('Webhooks delivered', { mailId: mail.id, urls: newlyDelivered });
                 if (isGuardian && newlyDelivered.length > 0) {
                     status.webhook.push(...newlyDelivered);
                     await dao.saveMailStatus(id, status, statusTTL);
                 }
             }
         } catch (e) {
-            console.error(e);
+            logger.error('Webhook handler error', { mailId: mail.id, error: (e as Error).message });
         }
     }
 
@@ -106,6 +121,7 @@ export async function emailHandler(message: ForwardableEmailMessage, env: Enviro
         if (!status.telegram && !blockTelegram && mail) {
             const ttl = Number.parseInt(MAIL_TTL, 10) || 60 * 60 * 24;
             const msgIDs = await sendMailToTelegram(mail, env);
+            logger.info('Telegram message sent', { mailId: mail.id, messageIds: msgIDs });
             for (const msgID of msgIDs) {
                 await dao.saveTelegramIDToMailID(`${msgID}`, mail.id, ttl);
             }
@@ -115,6 +131,6 @@ export async function emailHandler(message: ForwardableEmailMessage, env: Enviro
             await dao.saveMailStatus(id, status, statusTTL);
         }
     } catch (e) {
-        console.error(e);
+        logger.error('Telegram handler error', { mailId: mail?.id, error: (e as Error).message });
     }
 }

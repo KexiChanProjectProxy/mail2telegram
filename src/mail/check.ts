@@ -1,6 +1,7 @@
 import type { EmailMessage } from '@cloudflare/workers-types';
 import type { Environment } from '../types';
 import { Dao, loadArrayFromRaw } from '../db';
+import { logger } from '../logger';
 
 export type AddressCheckStatus = 'white' | 'block' | 'no_match';
 
@@ -48,10 +49,12 @@ export async function checkAddressStatus(addresses: string[], env: Environment):
             continue;
         }
         if (matchAddress(whiteList, addr)) {
+            logger.info('Address matched whitelist', { address: addr });
             result[addr] = 'white';
             continue;
         }
         if (matchAddress(blockList, addr)) {
+            logger.info('Address matched blocklist', { address: addr });
             result[addr] = 'block';
             continue;
         }
@@ -69,16 +72,10 @@ export async function isMessageBlock(message: EmailMessage, env: Environment): P
     for (const key in res) {
         switch (res[key]) {
             case 'white':
-                console.log(`Matched white list: ${key}`);
+                logger.info('Message allowed by whitelist', { address: key });
                 return false;
-            default:
-                break;
-        }
-    }
-    for (const key in res) {
-        switch (res[key]) {
             case 'block':
-                console.log(`Matched block list: ${key}`);
+                logger.info('Message blocked by blocklist', { address: key });
                 return true;
             default:
                 break;

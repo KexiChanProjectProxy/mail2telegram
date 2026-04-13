@@ -5,6 +5,7 @@ import { validate } from '@telegram-apps/init-data-node/web';
 import { json, Router } from 'itty-router';
 import { Dao } from '../../db';
 import { createTelegramBotAPI, telegramCommands, telegramWebhookHandler, tmaHTML } from '../../telegram';
+import { logger } from '../../logger';
 
 class HTTPError extends Error {
     readonly status: number;
@@ -58,6 +59,7 @@ function addressParamsCheck(address: string, type: AddressType): AddressListStor
 }
 
 function errorHandler(error: Error): Response {
+    logger.error('HTTP error', { status: error instanceof HTTPError ? error.status : 500, message: error.message });
     if (error instanceof HTTPError) {
         return new Response(JSON.stringify({
             error: error.message,
@@ -92,6 +94,7 @@ function createRouter(env: Environment): RouterType {
     });
 
     router.get('/init', async (): Promise<any> => {
+        logger.info('Init endpoint called');
         const api = createTelegramBotAPI(TELEGRAM_TOKEN);
         const webhook = await api.setWebhook({
             url: `https://${DOMAIN}/telegram/${TELEGRAM_TOKEN}/webhook`,
@@ -138,13 +141,15 @@ function createRouter(env: Environment): RouterType {
     /// Webhook
 
     router.post('/telegram/:token/webhook', async (req: IRequest): Promise<any> => {
+        logger.info('Telegram webhook received', { tokenPrefix: req.params.token?.slice(0, 8) });
         if (req.params.token !== TELEGRAM_TOKEN) {
+            logger.warn('Invalid telegram token in webhook', { expected: TELEGRAM_TOKEN?.slice(0, 8) });
             throw new HTTPError(403, 'Invalid token');
         }
         try {
             await telegramWebhookHandler(req, env);
         } catch (e) {
-            console.error(e);
+            logger.error('Telegram webhook handler error', { error: (e as Error).message });
         }
         return { success: true };
     });
@@ -174,8 +179,10 @@ function createRouter(env: Environment): RouterType {
 }
 
 export async function fetchHandler(request: Request, env: Environment): Promise<Response> {
+    logger.info('Incoming request', { method: request.method, path: new URL(request.url).pathname });
     const router = createRouter(env);
     return router.fetch(request).catch((e) => {
+        logger.error('Unhandled error in fetch handler', { error: e.message });
         return new Response(JSON.stringify({
             error: e.message,
         }), { status: 500 });
