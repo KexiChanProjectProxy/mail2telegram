@@ -10774,6 +10774,10 @@ async function sendMailToTelegram(mail, env) {
       chat_id: id,
       ...req
     });
+    if (!msg.ok || !msg.result) {
+      logger.error("Telegram sendMessage failed", { chatId: id, mailId: mail.id, description: msg.description });
+      continue;
+    }
     messageID.push(msg.result.message_id);
   }
   return messageID;
@@ -10863,9 +10867,13 @@ async function emailHandler(message, env) {
     if (!status.telegram && !blockTelegram && mail) {
       const ttl = Number.parseInt(MAIL_TTL, 10) || 60 * 60 * 24;
       const msgIDs = await sendMailToTelegram(mail, env);
-      logger.info("Telegram message sent", { mailId: mail.id, messageIds: msgIDs });
-      for (const msgID of msgIDs) {
-        await dao.saveTelegramIDToMailID(`${msgID}`, mail.id, ttl);
+      if (msgIDs.length > 0) {
+        logger.info("Telegram message sent", { mailId: mail.id, messageIds: msgIDs });
+        for (const msgID of msgIDs) {
+          await dao.saveTelegramIDToMailID(`${msgID}`, mail.id, ttl);
+        }
+      } else {
+        logger.warn("No Telegram messages sent", { mailId: mail.id });
       }
     }
     if (isGuardian) {

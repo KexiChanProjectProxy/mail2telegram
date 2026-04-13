@@ -18,7 +18,11 @@ export async function sendMailToTelegram(mail: EmailCache, env: Environment): Pr
         const msg = await api.sendMessageWithReturns({
             chat_id: id,
             ...req,
-        });
+        }) as { ok: boolean; result?: { message_id: number }; description?: string };
+        if (!msg.ok || !msg.result) {
+            logger.error('Telegram sendMessage failed', { chatId: id, mailId: mail.id, description: msg.description });
+            continue;
+        }
         messageID.push(msg.result.message_id);
     }
     return messageID;
@@ -121,9 +125,13 @@ export async function emailHandler(message: ForwardableEmailMessage, env: Enviro
         if (!status.telegram && !blockTelegram && mail) {
             const ttl = Number.parseInt(MAIL_TTL, 10) || 60 * 60 * 24;
             const msgIDs = await sendMailToTelegram(mail, env);
-            logger.info('Telegram message sent', { mailId: mail.id, messageIds: msgIDs });
-            for (const msgID of msgIDs) {
-                await dao.saveTelegramIDToMailID(`${msgID}`, mail.id, ttl);
+            if (msgIDs.length > 0) {
+                logger.info('Telegram message sent', { mailId: mail.id, messageIds: msgIDs });
+                for (const msgID of msgIDs) {
+                    await dao.saveTelegramIDToMailID(`${msgID}`, mail.id, ttl);
+                }
+            } else {
+                logger.warn('No Telegram messages sent', { mailId: mail.id });
             }
         }
         if (isGuardian) {
