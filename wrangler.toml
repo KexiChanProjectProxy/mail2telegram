@@ -1,0 +1,24 @@
+name = "mail2telegram"
+main = "build/index.js"
+compatibility_date = "2025-09-15"
+compatibility_flags = ["nodejs_compat_v2"]
+
+[ai]
+binding = "AI"
+
+[[kv_namespaces]]
+binding = "DB"
+id = "a6296acb43d44fcda7410d3a0fffafe2"
+
+[vars]
+DOMAIN = "mail2telegram.yuanzhisheng.workers.dev"
+TELEGRAM_ID = "-5152640143"
+ALLOWED_USERS = "-5152640143"
+TELEGRAM_TOKEN = "8646432436:AAGX99vRpaBQHGlt9Q2L0HKjHWFyfSQqHjg"
+FORWARD_LIST = ""
+GUARDIAN_MODE = "false"
+MAX_EMAIL_SIZE_POLICY = "truncate"
+DEBUG = "false"
+
+[build.env]
+YARN_ENABLE_IMMUTABLE_LOCKFILE = "false"
