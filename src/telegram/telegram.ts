@@ -28,7 +28,7 @@ function handleOpenTMACommand(mode: string, text: string | null, env: Environmen
             text: text || tmaModeDescription[mode] || 'Address Manager',
         };
 
-        if (msg.chat.type === 'private') {
+        if (msg.chat.type === 'private' && DOMAIN) {
             params.reply_markup = {
                 inline_keyboard: [
                     [

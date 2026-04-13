@@ -10233,13 +10233,13 @@ To		:	${mail.to}`;
       callback_data: `s:${mail.id}`
     });
   }
-  if (mail.text) {
+  if (mail.text && DOMAIN) {
     keyboard.push({
       text: "Text",
       url: `https://${DOMAIN}/email/${mail.id}?mode=text`
     });
   }
-  if (mail.html) {
+  if (mail.html && DOMAIN) {
     keyboard.push({
       text: "HTML",
       url: `https://${DOMAIN}/email/${mail.id}?mode=html`
@@ -10365,7 +10365,7 @@ function handleOpenTMACommand(mode, text, env) {
       chat_id: msg.chat.id,
       text: text || tmaModeDescription[mode] || "Address Manager"
     };
-    if (msg.chat.type === "private") {
+    if (msg.chat.type === "private" && DOMAIN) {
       params.reply_markup = {
         inline_keyboard: [
           [
@@ -10601,6 +10601,9 @@ function createRouter(env) {
     });
   });
   router.get("/init", async () => {
+    if (!DOMAIN) {
+      throw new HTTPError(500, "DOMAIN environment variable is not set");
+    }
     logger.info("Init endpoint called");
     const api = createTelegramBotAPI(TELEGRAM_TOKEN);
     const webhook = await api.setWebhook({

@@ -94,6 +94,9 @@ function createRouter(env: Environment): RouterType {
     });
 
     router.get('/init', async (): Promise<any> => {
+        if (!DOMAIN) {
+            throw new HTTPError(500, 'DOMAIN environment variable is not set');
+        }
         logger.info('Init endpoint called');
         const api = createTelegramBotAPI(TELEGRAM_TOKEN);
         const webhook = await api.setWebhook({

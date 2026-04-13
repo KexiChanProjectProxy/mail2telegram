@@ -32,13 +32,13 @@ export async function renderEmailListMode(mail: EmailCache, env: Environment): P
             callback_data: `s:${mail.id}`,
         });
     }
-    if (mail.text) {
+    if (mail.text && DOMAIN) {
         keyboard.push({
             text: 'Text',
             url: `https://${DOMAIN}/email/${mail.id}?mode=text`,
         });
     }
-    if (mail.html) {
+    if (mail.html && DOMAIN) {
         keyboard.push({
             text: 'HTML',
             url: `https://${DOMAIN}/email/${mail.id}?mode=html`,
